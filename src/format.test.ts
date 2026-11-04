@@ -3,6 +3,7 @@ import {
   describeInstance,
   describeStatus,
   describeSteamVr,
+  describeUpdate,
   formatDuration,
   formatFeedTime,
 } from "./format";
@@ -69,5 +70,33 @@ describe("describeSteamVr", () => {
 
   it("reports a missing installation", () => {
     expect(describeSteamVr({ ...status, installed: false })).toBe("SteamVR が見つかりません");
+  });
+});
+
+describe("describeUpdate", () => {
+  it("shows nothing without an update", () => {
+    expect(describeUpdate({ state: "none" })).toBeNull();
+  });
+
+  it("installs in place only for the installer version", () => {
+    const installed = describeUpdate({ state: "available", version: "0.3.0", installable: true });
+    expect(installed?.text).toBe("新しい版 0.3.0 があります");
+    expect(installed?.action?.command).toBe("install_update");
+    const portable = describeUpdate({ state: "available", version: "0.3.0", installable: false });
+    expect(portable?.action?.command).toBe("open_releases");
+  });
+
+  it("shows progress without a button while installing", () => {
+    const view = describeUpdate({ state: "installing", version: "0.3.0", percent: 42 });
+    expect(view).toEqual({ text: "0.3.0 に更新中… 42%", action: null });
+    expect(describeUpdate({ state: "installing", version: "0.3.0", percent: null })?.text).toBe(
+      "0.3.0 に更新中…",
+    );
+  });
+
+  it("offers a retry after a failure", () => {
+    const view = describeUpdate({ state: "failed", version: "0.3.0", message: "signature" });
+    expect(view?.text).toBe("更新に失敗しました: signature");
+    expect(view?.action?.command).toBe("install_update");
   });
 });

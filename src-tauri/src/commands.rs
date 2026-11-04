@@ -1,6 +1,7 @@
 //! 画面から呼ばれるコマンド。
 
 use crate::state::{self, AppState, Snapshot};
+use crate::updates;
 use crate::window;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
@@ -17,6 +18,7 @@ pub struct SettingsPatch {
     popup: Option<bool>,
     sound: Option<bool>,
     notify_leave: Option<bool>,
+    check_updates: Option<bool>,
 }
 
 #[tauri::command]
@@ -26,7 +28,13 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Settin
         settings.popup = patch.popup.unwrap_or(settings.popup);
         settings.sound = patch.sound.unwrap_or(settings.sound);
         settings.notify_leave = patch.notify_leave.unwrap_or(settings.notify_leave);
+        settings.check_updates = patch.check_updates.unwrap_or(settings.check_updates);
     });
+    match patch.check_updates {
+        Some(true) => updates::check_soon(&app),
+        Some(false) => updates::clear(&app),
+        None => {}
+    }
     if let (Some(always_on_top), Some(main)) =
         (patch.always_on_top, app.get_webview_window(window::MAIN))
     {
@@ -82,4 +90,14 @@ pub async fn open_licenses(app: AppHandle) -> Result<(), String> {
 pub async fn dismiss_popup(app: AppHandle, webview: WebviewWindow) -> Result<(), String> {
     window::open_main(&app);
     webview.destroy().map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    updates::install(&app).await
+}
+
+#[tauri::command]
+pub async fn open_releases(app: AppHandle) -> Result<(), String> {
+    updates::open_releases(&app)
 }

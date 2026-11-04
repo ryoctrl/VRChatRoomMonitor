@@ -15,6 +15,15 @@
       "csp": "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self'; connect-src ipc: http://ipc.localhost"
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDgxODY2MjEwMkNEOEFGNTEKUldSUnI5Z3NFR0tHZ1h4Uk5CY3dpRWI4VndUV2I4VU9BaFRFcTRjbmNpemRLeGQxMlBRcE4wRHMK",
+      "endpoints": [
+        "https://github.com/ryoctrl/VRChatRoomMonitor/releases/latest/download/latest.json"
+      ],
+      "windows": { "installMode": "passive" }
+    }
+  },
   "bundle": {
     "active": true,
     "targets": ["nsis"],

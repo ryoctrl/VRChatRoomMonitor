@@ -1,5 +1,6 @@
 //! アプリ全体の状態と、画面への反映。
 
+use crate::updates::UpdateStatus;
 use crate::window;
 use monitor_core::monitor::{Monitor, RoomView};
 use monitor_core::settings::Settings;
@@ -8,12 +9,15 @@ use serde::Serialize;
 use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 use tauri::{AppHandle, Emitter, Manager};
+use tauri_plugin_updater::Update;
 
 pub const SNAPSHOT_EVENT: &str = "snapshot";
 
 pub struct AppState {
     pub inner: Mutex<Inner>,
     pub settings_path: PathBuf,
+    /// 確認で見つかった更新。利用者が更新を選ぶまで保持する
+    pub pending_update: Mutex<Option<Update>>,
     pub steamvr: OnceLock<steamvr::Handle>,
     /// 保持している間だけログの監視が続く
     pub watcher: OnceLock<WatcherHandle>,
@@ -23,6 +27,8 @@ pub struct Inner {
     pub monitor: Monitor,
     pub settings: Settings,
     pub steamvr: steamvr::Status,
+    pub update: UpdateStatus,
+    pub app_version: String,
 }
 
 /// 画面に渡す現在の状態。
@@ -33,6 +39,8 @@ pub struct Snapshot {
     room: RoomView,
     settings: Settings,
     steamvr: steamvr::Status,
+    update: UpdateStatus,
+    app_version: String,
 }
 
 impl Inner {
@@ -41,6 +49,8 @@ impl Inner {
             room: self.monitor.view(),
             settings: self.settings.clone(),
             steamvr: self.steamvr.clone(),
+            update: self.update.clone(),
+            app_version: self.app_version.clone(),
         }
     }
 

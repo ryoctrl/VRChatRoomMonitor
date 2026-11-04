@@ -13,8 +13,8 @@ VRChat Inc. の公式ツールではなく、同社とは関係ありません�
 
 | ファイル | 内容 |
 |---|---|
-| `VRChatRoomMonitor.exe` | そのまま実行できる exe |
-| `VRChatRoomMonitor-<版>-setup.exe` | インストーラ。WebView2 ランタイムが無い PC では自動で導入する |
+| `VRChatRoomMonitor-<版>-setup.exe` | インストーラ（おすすめ）。アプリの中から更新でき、WebView2 ランタイムが無い PC では自動で導入する |
+| `VRChatRoomMonitor.exe` | そのまま実行できる exe。更新は配布ページから手動で行う |
 | `VRChatRoomMonitor-<版>-windows-x64.zip` | exe、説明書、ライセンス文書 |
 
 電子署名の無いアプリのため、初回は「Windows によって PC が保護されました」と表示されることがあります。その場合は「詳細情報」→「実行」を押してください。
@@ -26,6 +26,7 @@ VRChat Inc. の公式ツールではなく、同社とは関係ありません�
 - 入退室・ワールド移動・招待／招待リクエストの記録（新しいものが上）
 - 後から誰かが入ってきたときや招待が届いたときの、画面右下のポップアップ、通知音、タスクバーの点滅
 - ウィンドウを閉じてもトレイで監視を継続
+- 新しい版の確認と、アプリの中からの更新
 - SteamVR との同時起動（任意）
 
 ## 動作環境
@@ -37,7 +38,8 @@ Quest 単体（PC を使わない遊び方）では PC にログが出ないた�
 
 ## 仕組みと制限
 
-- VRChat が出力する `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat\output_log_*.txt` を読むだけで、VRChat 本体には手を加えず、インターネット通信も行いません。
+- VRChat が出力する `%USERPROFILE%\AppData\LocalLow\VRChat\VRChat\output_log_*.txt` を読むだけで、VRChat 本体には手を加えません。
+- インターネット通信は、下記の更新の確認とダウンロードだけです。画面下の「更新を確認」をオフにすると通信しません。
 - ログにはフレンド情報が含まれないため、フレンドかどうかやオンライン中のフレンド数は表示できません。
 - 入室時点でいた人と後から来た人の区別は、ログ中の自分の初期化記録（`Initialized PlayerAPI "…" is local`）の前後で判定しています。
 
@@ -49,6 +51,15 @@ Quest 単体（PC を使わない遊び方）では PC にログが出ないた�
 - 起動中は新しい記録を追加し、VRChat を再起動しても履歴を引き継ぎます。上限は 500 件で、超えると古いものから消えます。
 - アプリを終了すると履歴は消え、次の起動時に最新のログファイルから作り直します。
 - ディスクに保存するのは設定だけです（`%APPDATA%\com.ryoctrl.vrchatroommonitor`）。
+
+### アプリの更新
+
+[Tauri の updater](https://tauri.app/plugin/updater/) を使っています。
+
+- 起動の 15 秒後と、その後 6 時間ごとに、最新のリリースの `latest.json` を GitHub から取得して版を比べます。
+- 新しい版があると、画面上部とポップアップで知らせます。VR の最中に再起動しないよう、更新は「更新して再起動」を押したときに行います。
+- インストーラは、公開鍵（`src-tauri/tauri.conf.json`）で署名を検証してから実行します。
+- exe 版（インストーラを使っていない場合）は、更新するとインストール先が変わってしまうので、配布ページを案内します。
 
 ### SteamVR との連携
 
@@ -135,14 +146,16 @@ cargo test -p steamvr -- --ignored --nocapture
 2. 同じ版のタグを push する
 
 ```bash
-git tag v0.2.0
+git tag v0.3.0
 ```
 
 ```bash
-git push origin v0.2.0
+git push origin v0.3.0
 ```
 
-タグを push すると [Release ワークフロー](.github/workflows/release.yml) が、タグと版の一致を確認し、CI と同じ検査、テスト、ビルド、exe の動作確認を行ったうえで GitHub Release を作り、ファイルを公開します。
+タグを push すると [Release ワークフロー](.github/workflows/release.yml) が、タグと版の一致を確認し、CI と同じ検査、テスト、ビルド、exe の動作確認を行ったうえで、インストーラに署名し、更新情報の `latest.json` と一緒に GitHub Release として公開します。
+
+署名の秘密鍵は、リポジトリの Secret `TAURI_SIGNING_PRIVATE_KEY` に登録します。鍵を失うと既存の利用者へ更新を届けられなくなるので、控えを安全な場所に保管してください。
 
 ## ライセンス
 

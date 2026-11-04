@@ -105,6 +105,18 @@ pub fn show_tray_hint_once(app: &AppHandle) {
     });
 }
 
+/// 新しい版を見つけたことを知らせる。
+pub fn show_update_available(app: &AppHandle, version: &str) {
+    show_popup(
+        app,
+        &Popup {
+            title: "更新があります".to_string(),
+            body: format!("新しい版 {version} を利用できます"),
+            kind: "info",
+        },
+    );
+}
+
 fn show_popup(app: &AppHandle, popup: &Popup) {
     let Some(slot) = (0..MAX_POPUPS).find(|slot| {
         app.get_webview_window(&window::popup_label(*slot))

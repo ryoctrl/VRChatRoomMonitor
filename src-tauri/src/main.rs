@@ -5,6 +5,7 @@
 mod commands;
 mod notifier;
 mod state;
+mod updates;
 mod window;
 
 use monitor_core::cli::{self, Args};
@@ -41,6 +42,8 @@ fn main() {
                 window::open_main(app);
             }
         }))
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(
             tauri_plugin_window_state::Builder::default()
                 .with_filter(window::remembers_state)
@@ -53,6 +56,8 @@ fn main() {
             commands::remove_steamvr_entry,
             commands::open_licenses,
             commands::dismiss_popup,
+            commands::install_update,
+            commands::open_releases,
         ])
         .setup(move |app| setup(app.handle(), args).map_err(Into::into))
         .on_window_event(|window, event| {
@@ -96,8 +101,11 @@ fn setup(app: &AppHandle, args: Args) -> tauri::Result<()> {
             monitor: Monitor::default(),
             settings,
             steamvr: steamvr::Status::default(),
+            update: updates::UpdateStatus::default(),
+            app_version: app.package_info().version.to_string(),
         }),
         settings_path,
+        pending_update: Mutex::new(None),
         steamvr: OnceLock::new(),
         watcher: OnceLock::new(),
     });
@@ -118,6 +126,10 @@ fn setup(app: &AppHandle, args: Args) -> tauri::Result<()> {
         let _ = state
             .steamvr
             .set(start_steamvr(app, data_dir, args.from_steamvr)?);
+    }
+    // 開発中の exe は更新しない
+    if !cfg!(debug_assertions) && !args.no_update_check {
+        updates::start(app);
     }
     Ok(())
 }

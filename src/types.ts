@@ -29,6 +29,7 @@ export interface Settings {
   popup: boolean;
   sound: boolean;
   notifyLeave: boolean;
+  checkUpdates: boolean;
 }
 
 export interface SteamVrStatus {
@@ -37,6 +38,12 @@ export interface SteamVrStatus {
   listed: boolean;
   autostart: boolean;
 }
+
+export type UpdateStatus =
+  | { state: "none" }
+  | { state: "available"; version: string; installable: boolean }
+  | { state: "installing"; version: string; percent: number | null }
+  | { state: "failed"; version: string; message: string };
 
 export interface Snapshot {
   status: Status;
@@ -48,4 +55,6 @@ export interface Snapshot {
   feed: FeedEntry[];
   settings: Settings;
   steamvr: SteamVrStatus;
+  update: UpdateStatus;
+  appVersion: string;
 }

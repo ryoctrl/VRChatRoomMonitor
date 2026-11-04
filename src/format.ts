@@ -1,4 +1,4 @@
-import type { FeedKind, Location, Snapshot, SteamVrStatus } from "./types";
+import type { FeedKind, Location, Snapshot, SteamVrStatus, UpdateStatus } from "./types";
 
 /** 入室からこの時間のあいだは、プレイヤー一覧で強調する。 */
 export const RECENT_MILLISECONDS = 2 * 60 * 1000;
@@ -77,4 +77,33 @@ export function describeSteamVr(status: SteamVrStatus): string {
   }
   const listing = status.listed ? "一覧に登録済み" : "一覧に未登録";
   return status.connected ? `接続中・${listing}` : `未起動・${listing}`;
+}
+
+export interface UpdateView {
+  text: string;
+  /** ボタンの動作。無いときはボタンを出さない */
+  action: { label: string; command: "install_update" | "open_releases" } | null;
+}
+
+export function describeUpdate(update: UpdateStatus): UpdateView | null {
+  switch (update.state) {
+    case "none":
+      return null;
+    case "available":
+      return {
+        text: `新しい版 ${update.version} があります`,
+        action: update.installable
+          ? { label: "更新して再起動", command: "install_update" }
+          : { label: "配布ページを開く", command: "open_releases" },
+      };
+    case "installing": {
+      const progress = update.percent === null ? "" : ` ${update.percent}%`;
+      return { text: `${update.version} に更新中…${progress}`, action: null };
+    }
+    case "failed":
+      return {
+        text: `更新に失敗しました: ${update.message}`,
+        action: { label: "再試行", command: "install_update" },
+      };
+  }
 }

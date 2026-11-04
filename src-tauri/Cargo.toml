@@ -1,6 +1,6 @@
 [package]
 name = "vrchat-room-monitor"
-version = "0.1.0"
+version = "0.2.0"
 description = "VRChat のログを監視して、現在のルームの状況と入退室の記録をデスクトップに表示する"
 authors = ["RYOCTRL"]
 edition.workspace = true
@@ -17,7 +17,9 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 steamvr = { path = "../crates/steamvr" }
 tauri = { version = "2", features = ["image-png", "tray-icon"] }
+tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
+tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Media_Audio"] }
 

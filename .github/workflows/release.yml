@@ -34,6 +34,22 @@ jobs:
         with:
           name: VRChatRoomMonitor
           path: assets
+      # 秘密鍵に触れるのは、外部のビルド処理が動かないこのジョブのこの手順だけにする
+      - name: Sign the installer and write the update manifest
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          installer="VRChatRoomMonitor-$version-setup.exe"
+          npx --yes @tauri-apps/cli@2.12.4 signer sign "assets/$installer"
+          jq -n \
+            --arg version "$version" \
+            --arg date "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --rawfile signature "assets/$installer.sig" \
+            --arg url "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$installer" \
+            '{version: $version, pub_date: $date, platforms: {"windows-x86_64": {signature: $signature, url: $url}}}' \
+            > assets/latest.json
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}

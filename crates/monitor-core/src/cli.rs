@@ -19,6 +19,8 @@ pub struct Args {
     pub self_check: bool,
     /// SteamVR と連携しない（動作確認で実際の SteamVR に登録しないため）
     pub no_steamvr: bool,
+    /// 更新を確認しない（動作確認で通信しないため）
+    pub no_update_check: bool,
 }
 
 impl Args {
@@ -33,6 +35,7 @@ impl Args {
                 QUIT => parsed.quit = true,
                 "--self-check" => parsed.self_check = true,
                 "--no-steamvr" => parsed.no_steamvr = true,
+                "--no-update-check" => parsed.no_update_check = true,
                 _ => {}
             }
         }

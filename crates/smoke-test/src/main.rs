@@ -4,6 +4,7 @@
 //!
 //! 同梱ライブラリの読み込み、ログの表示、後から来た人の反映とポップアップ、閉じてもトレイで
 //! 動き続けること、二重起動の防止、再表示、終了を確かめる。ログと設定は一時フォルダを使い、SteamVR にも接続しない。
+//! 実際のアプリの通知と紛らわしいので、通知音はオフにして実行する。
 
 use chrono::Local;
 use std::fs::{self, File};
@@ -125,6 +126,7 @@ impl App<'_> {
             .arg("--data-dir")
             .arg(&self.data_dir)
             .arg("--no-steamvr")
+            .arg("--no-update-check")
             .env("WEBVIEW2_USER_DATA_FOLDER", &self.webview_dir);
         command
     }
@@ -152,6 +154,9 @@ fn run(exe: &Path, root: &Path) {
         webview_dir: root.join("webview"),
     };
     fs::create_dir_all(&app.log_dir).unwrap();
+    fs::create_dir_all(&app.data_dir).unwrap();
+    let settings = app.data_dir.join("settings.json");
+    fs::write(&settings, r#"{"sound": false}"#).unwrap();
 
     let self_check = Command::new(exe).arg("--self-check").status().unwrap();
     assert_eq!(self_check.code(), Some(0), "--self-check failed");
@@ -229,11 +234,17 @@ fn run(exe: &Path, root: &Path) {
     assert_eq!(wait_for_exit(&mut first), 0, "first instance exit code");
     println!("ok: exits with --quit");
 
+    // アプリが保存し直した内容で、事前の設定を読み込んだことと、保存できることを確かめる
+    let saved = fs::read_to_string(&settings).unwrap();
     assert!(
-        app.data_dir.join("settings.json").exists(),
-        "settings not saved"
+        saved.contains(r#""sound": false"#),
+        "sound setting not loaded: {saved}"
     );
-    println!("ok: settings are saved");
+    assert!(
+        saved.contains(r#""trayHintShown": true"#),
+        "settings not saved: {saved}"
+    );
+    println!("ok: settings are loaded and saved, with the sound off");
 }
 
 fn main() {

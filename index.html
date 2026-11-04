@@ -14,6 +14,11 @@
       <p id="instance" class="sub"></p>
     </header>
 
+    <div id="update" class="update" hidden>
+      <span id="update-text"></span>
+      <button id="update-action" type="button"></button>
+    </div>
+
     <main>
       <section class="panel players">
         <h2 id="count">ルーム内 —</h2>
@@ -59,6 +64,8 @@
         <span id="steamvr-status" class="sub"></span>
       </div>
       <div class="options links">
+        <label><input type="checkbox" data-setting="checkUpdates" />更新を確認</label>
+        <span id="version" class="sub version"></span>
         <button id="steamvr-remove" type="button" class="link">SteamVR の一覧から削除</button>
         <button id="licenses" type="button" class="link">ライセンス</button>
       </div>

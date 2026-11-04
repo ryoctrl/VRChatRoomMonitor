@@ -15,6 +15,8 @@ pub struct Settings {
     pub tray_hint_shown: bool,
     /// 利用者が SteamVR の一覧から削除した（自動で登録し直さない）
     pub steamvr_removed: bool,
+    /// 更新を確認する（GitHub に通信する）
+    pub check_updates: bool,
 }
 
 impl Default for Settings {
@@ -26,6 +28,7 @@ impl Default for Settings {
             notify_leave: false,
             tray_hint_shown: false,
             steamvr_removed: false,
+            check_updates: true,
         }
     }
 }

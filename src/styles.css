@@ -76,6 +76,33 @@ h2 {
   color: var(--error);
 }
 
+.update {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 5px 8px;
+  border-left: 4px solid var(--notice);
+  background: var(--panel);
+  font-size: 12px;
+}
+
+.update button {
+  flex: none;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--border);
+  color: var(--fg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.update button:hover {
+  border-color: var(--sub);
+}
+
 main {
   display: flex;
   flex: 1;
@@ -192,8 +219,11 @@ input[type="checkbox"] {
 }
 
 .links {
-  justify-content: flex-end;
   margin-top: 2px;
+}
+
+.links .version {
+  margin-left: auto;
 }
 
 .link {

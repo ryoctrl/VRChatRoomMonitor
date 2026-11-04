@@ -4,6 +4,7 @@ import {
   describeInstance,
   describeStatus,
   describeSteamVr,
+  describeUpdate,
   FEED_ICONS,
   formatClock,
   formatDuration,
@@ -30,9 +31,14 @@ const steamVrAutostart = element<HTMLInputElement>("steamvr-autostart");
 const steamVrStatus = element("steamvr-status");
 const steamVrRemove = element<HTMLButtonElement>("steamvr-remove");
 const licenses = element<HTMLButtonElement>("licenses");
+const updateBanner = element("update");
+const updateText = element("update-text");
+const updateAction = element<HTMLButtonElement>("update-action");
+const version = element("version");
 const settingInputs = document.querySelectorAll<HTMLInputElement>("input[data-setting]");
 
 let current: Snapshot | null = null;
+let updateCommand: string | null = null;
 /** 行の内容とは別に、毎秒更新する経過時間のセルを覚えておく。 */
 let elapsedCells: { cell: HTMLTableCellElement; row: HTMLTableRowElement; player: Player }[] = [];
 
@@ -93,6 +99,16 @@ function renderOptions(snapshot: Snapshot): void {
   steamVrRemove.hidden = !steamvr.listed;
 }
 
+function renderUpdate(snapshot: Snapshot): void {
+  version.textContent = `v${snapshot.appVersion}`;
+  const view = describeUpdate(snapshot.update);
+  updateBanner.hidden = view === null;
+  updateText.textContent = view?.text ?? "";
+  updateAction.hidden = !view?.action;
+  updateAction.textContent = view?.action?.label ?? "";
+  updateCommand = view?.action?.command ?? null;
+}
+
 function renderInstance(snapshot: Snapshot, now: number): void {
   instance.textContent = describeInstance(snapshot.location, snapshot.enteredAt, now);
 }
@@ -110,6 +126,7 @@ function render(snapshot: Snapshot): void {
   renderPlayers(snapshot.players, now);
   renderFeed(snapshot, now);
   renderOptions(snapshot);
+  renderUpdate(snapshot);
 }
 
 /** 経過時間だけを更新する。ウィンドウが隠れている間は何もしない。 */
@@ -153,6 +170,19 @@ steamVrAutostart.addEventListener("change", () => {
 
 steamVrRemove.addEventListener("click", () => {
   void runSteamVrAction(() => invoke("remove_steamvr_entry"));
+});
+
+updateAction.addEventListener("click", () => {
+  if (updateCommand) {
+    updateAction.disabled = true;
+    void invoke(updateCommand)
+      .catch(() => {
+        // 失敗の内容は、状態の更新として画面に届く
+      })
+      .finally(() => {
+        updateAction.disabled = false;
+      });
+  }
 });
 
 licenses.addEventListener("click", () => {
