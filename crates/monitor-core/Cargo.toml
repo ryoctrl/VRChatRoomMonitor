@@ -1,0 +1,16 @@
+[package]
+name = "monitor-core"
+version = "0.0.0"
+description = "VRChat のログ解析、ルーム状態の管理、ログファイルの監視（GUI に依存しない）"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints]
+workspace = true

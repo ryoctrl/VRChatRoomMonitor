@@ -1,0 +1,8 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.6.5/schema.json",
+  "files": {
+    "includes": ["src/**", "*.json", "*.ts", "index.html", "!src-tauri", "!crates"]
+  },
+  "formatter": { "indentStyle": "space", "lineWidth": 100 },
+  "linter": { "enabled": true, "rules": { "preset": "recommended" } }
+}

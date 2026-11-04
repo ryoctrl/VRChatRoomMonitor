@@ -1,0 +1,7 @@
+/target/
+/dist/
+/artifacts/
+node_modules/
+src-tauri/gen/
+# 第三者ライセンスの一覧はビルド時に生成する（scripts/generate-notices.ps1）
+/public/third-party-notices.html

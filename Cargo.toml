@@ -1,0 +1,22 @@
+[workspace]
+resolver = "3"
+members = ["crates/monitor-core", "crates/steamvr", "crates/smoke-test", "src-tauri"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/ryoctrl/VRChatRoomMonitor"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+# 常駐するアプリなので、実行速度よりも exe の小ささを優先する
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

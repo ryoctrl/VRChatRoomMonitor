@@ -1,0 +1,215 @@
+:root {
+  color-scheme: dark;
+  --bg: #1d1f24;
+  --panel: #262930;
+  --border: #3a3f4b;
+  --fg: #e8e8ea;
+  --sub: #9aa0ab;
+  --join: #5fd38d;
+  --leave: #8a909b;
+  --room: #7aa2f7;
+  --notice: #f0b35a;
+  --error: #f07178;
+  font-family: "Yu Gothic UI", "Segoe UI", "Meiryo UI", system-ui, sans-serif;
+  font-size: 13px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px 6px;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--fg);
+  user-select: none;
+}
+
+p,
+h1,
+h2 {
+  margin: 0;
+}
+
+h1 {
+  margin-top: 2px;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+h2 {
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.sub {
+  color: var(--sub);
+}
+
+.status {
+  font-size: 12px;
+  color: var(--sub);
+}
+
+.status.in-room {
+  color: var(--join);
+}
+
+.status.moving {
+  color: var(--notice);
+}
+
+.status.offline {
+  color: var(--leave);
+}
+
+.status.problem {
+  color: var(--error);
+}
+
+main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  margin: 10px 0 6px;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.players {
+  flex: 3;
+}
+
+.feed {
+  flex: 2;
+}
+
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--panel);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  padding: 3px 6px;
+  background: var(--bg);
+  color: var(--sub);
+  font-size: 12px;
+  font-weight: normal;
+  text-align: left;
+}
+
+th.fixed {
+  width: 64px;
+}
+
+th.time {
+  width: 86px;
+}
+
+td {
+  padding: 3px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+tr.recent td {
+  color: var(--join);
+}
+
+tr.local td {
+  color: var(--sub);
+}
+
+tr.join td {
+  color: var(--join);
+}
+
+tr.leave td {
+  color: var(--leave);
+}
+
+tr.room td {
+  color: var(--room);
+  font-weight: bold;
+}
+
+tr.notice td {
+  color: var(--notice);
+}
+
+tr.info td {
+  color: var(--sub);
+}
+
+.options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 12px;
+  color: var(--sub);
+  font-size: 12px;
+}
+
+.steamvr {
+  margin-top: 2px;
+}
+
+label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--join);
+}
+
+.links {
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sub);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:hover {
+  color: var(--fg);
+}
+
+[hidden] {
+  display: none;
+}

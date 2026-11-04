@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <mask id="dot-gap">
+      <rect width="1024" height="1024" fill="#fff"/>
+      <circle cx="748" cy="297" r="179" fill="#000"/>
+    </mask>
+  </defs>
+  <rect x="31" y="31" width="962" height="962" rx="225" fill="#262930"/>
+  <g fill="#5fd38d" mask="url(#dot-gap)">
+    <circle cx="451" cy="410" r="148"/>
+    <path d="M175 819a276 256 0 0 1 552 0z"/>
+  </g>
+  <circle cx="748" cy="297" r="123" fill="#f0b35a"/>
+</svg>

@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VRChat Room Monitor</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <script type="module" src="/src/main.ts"></script>
+  </head>
+  <body>
+    <header>
+      <p id="status" class="status"></p>
+      <h1 id="world">—</h1>
+      <p id="instance" class="sub"></p>
+    </header>
+
+    <main>
+      <section class="panel players">
+        <h2 id="count">ルーム内 —</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="name">名前</th>
+                <th class="fixed">入室</th>
+                <th class="fixed">経過</th>
+              </tr>
+            </thead>
+            <tbody id="players"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel feed">
+        <h2>入退室ログ</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="time">時刻</th>
+                <th>内容</th>
+              </tr>
+            </thead>
+            <tbody id="feed"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="options">
+        <label><input type="checkbox" data-setting="alwaysOnTop" />常に最前面</label>
+        <label><input type="checkbox" data-setting="popup" />ポップアップ</label>
+        <label><input type="checkbox" data-setting="sound" />通知音</label>
+        <label><input type="checkbox" data-setting="notifyLeave" />退室も通知</label>
+      </div>
+      <div class="options steamvr">
+        <label><input id="steamvr-autostart" type="checkbox" />SteamVR と同時に起動</label>
+        <span id="steamvr-status" class="sub"></span>
+      </div>
+      <div class="options links">
+        <button id="steamvr-remove" type="button" class="link">SteamVR の一覧から削除</button>
+        <button id="licenses" type="button" class="link">ライセンス</button>
+      </div>
+    </footer>
+  </body>
+</html>
