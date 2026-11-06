@@ -21,7 +21,8 @@ pub struct SettingsPatch {
     sound: Option<bool>,
     notify_leave: Option<bool>,
     check_updates: Option<bool>,
-    current_world_joins_only: Option<bool>,
+    current_world_only: Option<bool>,
+    fixed_title: Option<bool>,
     sound_join: Option<Sound>,
     sound_leave: Option<Sound>,
     sound_notice: Option<Sound>,
@@ -35,9 +36,10 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Settin
         settings.sound = patch.sound.unwrap_or(settings.sound);
         settings.notify_leave = patch.notify_leave.unwrap_or(settings.notify_leave);
         settings.check_updates = patch.check_updates.unwrap_or(settings.check_updates);
-        settings.current_world_joins_only = patch
-            .current_world_joins_only
-            .unwrap_or(settings.current_world_joins_only);
+        settings.current_world_only = patch
+            .current_world_only
+            .unwrap_or(settings.current_world_only);
+        settings.fixed_title = patch.fixed_title.unwrap_or(settings.fixed_title);
         settings.sound_join = patch.sound_join.unwrap_or(settings.sound_join);
         settings.sound_leave = patch.sound_leave.unwrap_or(settings.sound_leave);
         settings.sound_notice = patch.sound_notice.unwrap_or(settings.sound_notice);

@@ -18,8 +18,12 @@ pub struct Settings {
     pub steamvr_removed: bool,
     /// 更新を確認する（GitHub に通信する）
     pub check_updates: bool,
-    /// 入退室ログを、現在のワールドの入室だけに絞る（配信に映す場合など）
-    pub current_world_joins_only: bool,
+    /// 入退室ログを、現在のワールドの分だけに絞る（配信に映す場合など）。
+    /// 0.2.1 では別の名前で保存していたので、その設定も読み込む
+    #[serde(alias = "currentWorldJoinsOnly")]
+    pub current_world_only: bool,
+    /// ウィンドウの題名をアプリ名だけにする（ウィンドウキャプチャで題名を一致させる場合など）
+    pub fixed_title: bool,
     pub sound_join: Sound,
     pub sound_leave: Sound,
     /// 招待やグループ通知など
@@ -36,7 +40,8 @@ impl Default for Settings {
             tray_hint_shown: false,
             steamvr_removed: false,
             check_updates: true,
-            current_world_joins_only: false,
+            current_world_only: false,
+            fixed_title: false,
             sound_join: Sound::Chime,
             sound_leave: Sound::Soft,
             sound_notice: Sound::Bell,
@@ -103,9 +108,20 @@ mod tests {
         assert!(!loaded.sound);
         assert!(loaded.popup);
         // 以前の版の設定ファイルには無い項目は、既定値で始まる
-        assert!(!loaded.current_world_joins_only);
+        assert!(!loaded.current_world_only);
+        assert!(!loaded.fixed_title);
         assert_eq!(loaded.sound_join, Sound::Chime);
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn fixed_title_uses_the_name_the_ui_expects() {
+        let settings = Settings {
+            fixed_title: true,
+            ..Settings::default()
+        };
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["fixedTitle"], true);
     }
 
     #[test]
@@ -136,10 +152,19 @@ mod tests {
     #[test]
     fn current_world_filter_uses_the_name_the_ui_expects() {
         let settings = Settings {
-            current_world_joins_only: true,
+            current_world_only: true,
             ..Settings::default()
         };
         let json = serde_json::to_value(settings).unwrap();
-        assert_eq!(json["currentWorldJoinsOnly"], true);
+        assert_eq!(json["currentWorldOnly"], true);
+    }
+
+    #[test]
+    fn current_world_filter_keeps_the_setting_saved_by_0_2_1() {
+        let path = temp_path("old-filter-name");
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, r#"{"currentWorldJoinsOnly": true}"#).unwrap();
+        assert!(Settings::load(&path).current_world_only);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
     }
 }

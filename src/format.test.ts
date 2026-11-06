@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  currentWorldJoins,
+  currentWorldFeed,
   describeInstance,
   describeStatus,
   describeSteamVr,
@@ -35,7 +35,7 @@ describe("formatFeedTime", () => {
   });
 });
 
-describe("currentWorldJoins", () => {
+describe("currentWorldFeed", () => {
   const entry = (kind: FeedKind, text: string): FeedEntry => ({ time: 0, kind, text });
   const feed = [
     entry("leave", "Carol が退室"),
@@ -49,26 +49,36 @@ describe("currentWorldJoins", () => {
   ];
   const texts = (entries: FeedEntry[]): string[] => entries.map((item) => item.text);
 
-  it("keeps only the joins since entering the current room", () => {
-    expect(texts(currentWorldJoins({ worldName: "今のワールド", feed }))).toEqual([
+  it("keeps the current room's lines, including its name, without notices", () => {
+    expect(texts(currentWorldFeed({ worldName: "今のワールド", feed }))).toEqual([
+      "Carol が退室",
       "Dave が入室",
       "Carol が入室",
+      "入室完了（先客 1 人）",
+      "今のワールド",
     ]);
   });
 
   it("shows nothing outside a room, even right after leaving one", () => {
-    expect(currentWorldJoins({ worldName: null, feed })).toEqual([]);
+    expect(currentWorldFeed({ worldName: null, feed })).toEqual([]);
   });
 
-  it("is empty right after entering a room", () => {
+  it("shows only the room name right after entering a room", () => {
     const entered = [entry("room", "新しいワールド"), ...feed];
-    expect(currentWorldJoins({ worldName: "新しいワールド", feed: entered })).toEqual([]);
+    expect(texts(currentWorldFeed({ worldName: "新しいワールド", feed: entered }))).toEqual([
+      "新しいワールド",
+    ]);
   });
 
-  it("keeps every join when the room line has dropped out of the limit", () => {
-    const joins = [entry("join", "Dave が入室"), entry("leave", "Carol が退室")];
-    expect(texts(currentWorldJoins({ worldName: "今のワールド", feed: joins }))).toEqual([
+  it("keeps the remaining lines when the room line has dropped out of the limit", () => {
+    const lines = [
+      entry("notice", "招待: Alice → 別のワールド"),
+      entry("join", "Dave が入室"),
+      entry("leave", "Carol が退室"),
+    ];
+    expect(texts(currentWorldFeed({ worldName: "今のワールド", feed: lines }))).toEqual([
       "Dave が入室",
+      "Carol が退室",
     ]);
   });
 });

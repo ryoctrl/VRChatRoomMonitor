@@ -54,16 +54,17 @@ export function formatFeedTime(time: number, now: number): string {
 }
 
 /**
- * 今いるルームに入ってからの入室だけを返す。記録は新しいものが先頭なので、最初に見つかる
- * ワールド移動の行より手前が今のルームの分。その行が上限で消えていれば、残りはすべて今のルームの分。
+ * 今いるルームの記録だけを、ルーム名の行も含めて返す。記録は新しいものが先頭なので、最初に見つかる
+ * ルーム名の行までが今のルームの分。その行が上限で消えていれば、残りはすべて今のルームの分。
+ * 招待などの通知は、差出人や別のワールド名が配信に映らないよう除く。
  */
-export function currentWorldJoins(snapshot: Pick<Snapshot, "worldName" | "feed">): FeedEntry[] {
+export function currentWorldFeed(snapshot: Pick<Snapshot, "worldName" | "feed">): FeedEntry[] {
   if (snapshot.worldName === null) {
     return [];
   }
   const roomLine = snapshot.feed.findIndex((entry) => entry.kind === "room");
-  const current = roomLine === -1 ? snapshot.feed : snapshot.feed.slice(0, roomLine);
-  return current.filter((entry) => entry.kind === "join");
+  const current = roomLine === -1 ? snapshot.feed : snapshot.feed.slice(0, roomLine + 1);
+  return current.filter((entry) => entry.kind !== "notice");
 }
 
 export function describeInstance(

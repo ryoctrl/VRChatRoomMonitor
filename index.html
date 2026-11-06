@@ -38,9 +38,9 @@
 
       <section class="panel feed">
         <div class="panel-head">
-          <h2 id="feed-title">入退室ログ</h2>
+          <h2>入退室ログ</h2>
           <label>
-            <input type="checkbox" data-setting="currentWorldJoinsOnly" />現在のワールドの入室のみ
+            <input type="checkbox" data-setting="currentWorldOnly" />現在のワールドのみ
           </label>
         </div>
         <div class="scroll">
@@ -53,7 +53,7 @@
             </thead>
             <tbody id="feed"></tbody>
           </table>
-          <p id="feed-empty" class="sub empty" hidden>まだ入室はありません</p>
+          <p id="feed-empty" class="sub empty" hidden>ワールドに入ると表示します</p>
         </div>
       </section>
     </main>
@@ -64,6 +64,9 @@
         <label><input type="checkbox" data-setting="popup" />ポップアップ</label>
         <label><input type="checkbox" data-setting="sound" />通知音</label>
         <label><input type="checkbox" data-setting="notifyLeave" />退室も通知</label>
+        <label title="ウィンドウの題名を「VRChat Room Monitor」のままにします（ウィンドウキャプチャ用）">
+          <input type="checkbox" data-setting="fixedTitle" />タイトルを固定
+        </label>
       </div>
       <div class="options sounds">
         <label>入室の音<select data-sound="soundJoin"></select></label>

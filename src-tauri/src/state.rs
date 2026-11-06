@@ -54,10 +54,20 @@ impl Inner {
         }
     }
 
-    pub fn title(&self) -> String {
+    /// トレイの説明。今のルームの状況を含む。
+    pub fn room_title(&self) -> String {
         match self.monitor.summary() {
             Some(summary) => format!("{summary} - {}", window::APP_NAME),
             None => window::APP_NAME.to_string(),
+        }
+    }
+
+    /// ウィンドウの題名。固定する設定なら、ウィンドウキャプチャで一致させられるようアプリ名だけにする。
+    pub fn window_title(&self) -> String {
+        if self.settings.fixed_title {
+            window::APP_NAME.to_string()
+        } else {
+            self.room_title()
         }
     }
 }
@@ -77,16 +87,16 @@ impl AppState {
 
 /// 現在の状態を画面、ウィンドウの題名、トレイの説明に反映する。
 pub fn publish(app: &AppHandle) {
-    let (snapshot, title) = {
+    let (snapshot, window_title, room_title) = {
         let state = app.state::<AppState>();
         let inner = state.lock();
-        (inner.snapshot(), inner.title())
+        (inner.snapshot(), inner.window_title(), inner.room_title())
     };
     let _ = app.emit(SNAPSHOT_EVENT, &snapshot);
     if let Some(main) = app.get_webview_window(window::MAIN) {
-        let _ = main.set_title(&title);
+        let _ = main.set_title(&window_title);
     }
     if let Some(tray) = app.tray_by_id(window::TRAY) {
-        let _ = tray.set_tooltip(Some(&title));
+        let _ = tray.set_tooltip(Some(&room_title));
     }
 }

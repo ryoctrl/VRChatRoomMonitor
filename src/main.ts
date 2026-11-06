@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
-  currentWorldJoins,
+  currentWorldFeed,
   describeInstance,
   describeStatus,
   describeSteamVr,
@@ -29,7 +29,6 @@ const instance = element("instance");
 const count = element("count");
 const playerRows = element<HTMLTableSectionElement>("players");
 const feedRows = element<HTMLTableSectionElement>("feed");
-const feedTitle = element("feed-title");
 const feedEmpty = element("feed-empty");
 const steamVrAutostart = element<HTMLInputElement>("steamvr-autostart");
 const steamVrStatus = element("steamvr-status");
@@ -80,10 +79,9 @@ function renderPlayers(players: Player[], now: number): void {
 }
 
 function renderFeed(snapshot: Snapshot, now: number): void {
-  const joinsOnly = snapshot.settings.currentWorldJoinsOnly;
-  const entries = joinsOnly ? currentWorldJoins(snapshot) : snapshot.feed;
-  feedTitle.textContent = joinsOnly ? "入室ログ" : "入退室ログ";
-  feedEmpty.hidden = !joinsOnly || entries.length > 0;
+  const currentOnly = snapshot.settings.currentWorldOnly;
+  const entries = currentOnly ? currentWorldFeed(snapshot) : snapshot.feed;
+  feedEmpty.hidden = !currentOnly || entries.length > 0;
   const rows = entries.map((entry) => {
     const row = document.createElement("tr");
     row.className = entry.kind;

@@ -32,7 +32,8 @@ export interface Settings {
   sound: boolean;
   notifyLeave: boolean;
   checkUpdates: boolean;
-  currentWorldJoinsOnly: boolean;
+  currentWorldOnly: boolean;
+  fixedTitle: boolean;
   soundJoin: SoundName;
   soundLeave: SoundName;
   soundNotice: SoundName;
