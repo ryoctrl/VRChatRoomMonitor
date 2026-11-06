@@ -126,6 +126,23 @@ main {
   flex: 2;
 }
 
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2px 12px;
+  margin-bottom: 4px;
+}
+
+.panel-head h2 {
+  margin-bottom: 0;
+}
+
+.empty {
+  padding: 3px 6px;
+}
+
 .scroll {
   flex: 1;
   min-height: 0;
@@ -203,14 +220,32 @@ tr.info td {
   font-size: 12px;
 }
 
-.steamvr {
+.steamvr,
+.sounds {
   margin-top: 2px;
+}
+
+select {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--panel);
+  color: var(--fg);
+  font: inherit;
+}
+
+select:disabled {
+  color: var(--sub);
 }
 
 label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+
+.panel-head label {
+  color: var(--sub);
+  font-size: 12px;
 }
 
 input[type="checkbox"] {

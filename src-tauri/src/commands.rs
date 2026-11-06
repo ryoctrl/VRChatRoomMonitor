@@ -1,8 +1,10 @@
 //! 画面から呼ばれるコマンド。
 
+use crate::notifier;
 use crate::state::{self, AppState, Snapshot};
 use crate::updates;
 use crate::window;
+use monitor_core::sound::Sound;
 use serde::Deserialize;
 use tauri::{AppHandle, Manager, State, WebviewWindow};
 
@@ -19,6 +21,10 @@ pub struct SettingsPatch {
     sound: Option<bool>,
     notify_leave: Option<bool>,
     check_updates: Option<bool>,
+    current_world_joins_only: Option<bool>,
+    sound_join: Option<Sound>,
+    sound_leave: Option<Sound>,
+    sound_notice: Option<Sound>,
 }
 
 #[tauri::command]
@@ -29,6 +35,12 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Settin
         settings.sound = patch.sound.unwrap_or(settings.sound);
         settings.notify_leave = patch.notify_leave.unwrap_or(settings.notify_leave);
         settings.check_updates = patch.check_updates.unwrap_or(settings.check_updates);
+        settings.current_world_joins_only = patch
+            .current_world_joins_only
+            .unwrap_or(settings.current_world_joins_only);
+        settings.sound_join = patch.sound_join.unwrap_or(settings.sound_join);
+        settings.sound_leave = patch.sound_leave.unwrap_or(settings.sound_leave);
+        settings.sound_notice = patch.sound_notice.unwrap_or(settings.sound_notice);
     });
     match patch.check_updates {
         Some(true) => updates::check_soon(&app),
@@ -41,6 +53,12 @@ pub fn update_settings(app: AppHandle, state: State<'_, AppState>, patch: Settin
         let _ = main.set_always_on_top(always_on_top);
     }
     state::publish(&app);
+}
+
+/// 選んだ音を試しに鳴らす。
+#[tauri::command]
+pub fn preview_sound(sound: Sound) {
+    notifier::play_sound(sound);
 }
 
 fn steamvr_handle(app: &AppHandle) -> Result<steamvr::Handle, String> {

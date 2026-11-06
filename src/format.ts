@@ -1,4 +1,12 @@
-import type { FeedKind, Location, Snapshot, SteamVrStatus, UpdateStatus } from "./types";
+import type {
+  FeedEntry,
+  FeedKind,
+  Location,
+  Snapshot,
+  SoundName,
+  SteamVrStatus,
+  UpdateStatus,
+} from "./types";
 
 /** 入室からこの時間のあいだは、プレイヤー一覧で強調する。 */
 export const RECENT_MILLISECONDS = 2 * 60 * 1000;
@@ -10,6 +18,16 @@ export const FEED_ICONS: Record<FeedKind, string> = {
   notice: "✉",
   info: "・",
 };
+
+export const SOUND_OPTIONS: { value: SoundName; label: string }[] = [
+  { value: "chime", label: "チャイム" },
+  { value: "bell", label: "ベル" },
+  { value: "marimba", label: "マリンバ" },
+  { value: "pop", label: "ポップ" },
+  { value: "soft", label: "ソフト" },
+  { value: "windows", label: "Windows 標準" },
+  { value: "silent", label: "なし" },
+];
 
 const pad = (value: number): string => String(value).padStart(2, "0");
 
@@ -33,6 +51,19 @@ export function formatFeedTime(time: number, now: number): string {
     return `${formatClock(time)}:${pad(date.getSeconds())}`;
   }
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${formatClock(time)}`;
+}
+
+/**
+ * 今いるルームに入ってからの入室だけを返す。記録は新しいものが先頭なので、最初に見つかる
+ * ワールド移動の行より手前が今のルームの分。その行が上限で消えていれば、残りはすべて今のルームの分。
+ */
+export function currentWorldJoins(snapshot: Pick<Snapshot, "worldName" | "feed">): FeedEntry[] {
+  if (snapshot.worldName === null) {
+    return [];
+  }
+  const roomLine = snapshot.feed.findIndex((entry) => entry.kind === "room");
+  const current = roomLine === -1 ? snapshot.feed : snapshot.feed.slice(0, roomLine);
+  return current.filter((entry) => entry.kind === "join");
 }
 
 export function describeInstance(

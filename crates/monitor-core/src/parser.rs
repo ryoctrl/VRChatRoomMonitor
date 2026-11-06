@@ -6,6 +6,8 @@ use chrono::NaiveDateTime;
 
 const TIME_LENGTH: usize = 19;
 const TIME_FORMAT: &str = "%Y.%m.%d %H:%M:%S";
+const MESSAGE_START: &str = "message: \"";
+const MESSAGE_END: &str = "\">";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LogEvent {
@@ -32,9 +34,13 @@ pub enum LogEvent {
         name: String,
     },
     Notification {
+        /// 通知の ID。未読の通知は同じ ID で何度もログに出る
+        id: String,
         kind: String,
+        /// 差出人。グループのお知らせなどでは空
         sender: String,
         world_name: Option<String>,
+        message: Option<String>,
     },
     AppQuit,
 }
@@ -43,6 +49,61 @@ pub enum LogEvent {
 pub struct TimedEvent {
     pub time: NaiveDateTime,
     pub event: LogEvent,
+}
+
+/// ログを 1 行ずつ解析する。通知の本文は複数行にまたがることがあるので、閉じるまで集めてから返す。
+#[derive(Debug, Default)]
+pub struct LineParser {
+    /// 本文の続きを待っている通知
+    open: Option<TimedEvent>,
+}
+
+impl LineParser {
+    pub fn feed(&mut self, line: &str) -> Vec<TimedEvent> {
+        let line = line.trim_end_matches(['\r', '\n']);
+        let mut finished = Vec::new();
+        if let Some(open) = self.open.take() {
+            if !has_timestamp(line) {
+                return match continue_message(open, line) {
+                    (event, true) => vec![event],
+                    (event, false) => {
+                        self.open = Some(event);
+                        vec![]
+                    }
+                };
+            }
+            // 閉じないまま次の記録が始まったら、そこまでを本文とする
+            finished.push(open);
+        }
+        if let Some(timed) = parse_line(line) {
+            if matches!(timed.event, LogEvent::Notification { .. }) && !line.ends_with(MESSAGE_END)
+            {
+                self.open = Some(timed);
+            } else {
+                finished.push(timed);
+            }
+        }
+        finished
+    }
+}
+
+fn has_timestamp(line: &str) -> bool {
+    line.get(..TIME_LENGTH)
+        .is_some_and(|stamp| NaiveDateTime::parse_from_str(stamp, TIME_FORMAT).is_ok())
+}
+
+/// 本文に 1 行を足す。戻り値の真偽は本文がこの行で閉じたかどうか。
+fn continue_message(mut timed: TimedEvent, line: &str) -> (TimedEvent, bool) {
+    let (text, closed) = match line.strip_suffix(MESSAGE_END) {
+        Some(text) => (text, true),
+        None => (line, false),
+    };
+    if let LogEvent::Notification { message, .. } = &mut timed.event {
+        let body = message.get_or_insert_default();
+        body.push('\n');
+        body.push_str(text);
+    }
+    (timed, closed)
 }
 
 pub fn parse_line(line: &str) -> Option<TimedEvent> {
@@ -121,6 +182,11 @@ fn parse_notification(body: &str) -> Option<LogEvent> {
     let (sender, rest) = rest.split_once(", sender user id:")?;
     let (_, rest) = rest.split_once(" of type: ")?;
     let (kind, rest) = rest.split_once(',')?;
+    let id = rest
+        .trim_start()
+        .strip_prefix("id: ")
+        .and_then(|tail| tail.split(',').next())
+        .unwrap_or_default();
     let world_name = rest
         .split_once("details: {{")
         .and_then(|(_, details)| details.split_once("}}"))
@@ -128,10 +194,18 @@ fn parse_notification(body: &str) -> Option<LogEvent> {
         .and_then(|(_, tail)| tail.split(',').next())
         .filter(|name| !name.is_empty())
         .map(str::to_string);
+    let message = rest
+        .split_once(" m seen:")
+        .and_then(|(_, tail)| tail.split_once(MESSAGE_START))
+        .map(|(_, text)| text.strip_suffix(MESSAGE_END).unwrap_or(text))
+        .filter(|text| !text.is_empty())
+        .map(str::to_string);
     Some(LogEvent::Notification {
+        id: id.to_string(),
         kind: kind.to_string(),
         sender: sender.to_string(),
         world_name,
+        message,
     })
 }
 
@@ -256,9 +330,11 @@ mod tests {
         assert_eq!(
             event(&message),
             Some(LogEvent::Notification {
+                id: "not_1".into(),
                 kind: "invite".into(),
                 sender: "Alice".into(),
                 world_name: Some("Test World".into()),
+                message: None,
             })
         );
     }
@@ -273,10 +349,107 @@ mod tests {
         assert_eq!(
             event(&message),
             Some(LogEvent::Notification {
+                id: "not_2".into(),
                 kind: "requestInvite".into(),
                 sender: "Bob".into(),
                 world_name: None,
+                message: None,
             })
         );
+    }
+
+    /// 実際のログと同じ形の、差出人の無いグループのお知らせ。
+    fn group_line(clock: &str, id: &str, message: &str) -> String {
+        format!(
+            "2026.11.03 {clock} Debug      -  Received Notification: <Notification from \
+             username:, sender user id: to usr_2 of type: group, id: {id}, created at: x, \
+             details: {{{{}}}}, type:group, m seen:False, message: \"{message}"
+        )
+    }
+
+    fn feed_all(parser: &mut LineParser, lines: &[String]) -> Vec<LogEvent> {
+        lines
+            .iter()
+            .flat_map(|line| parser.feed(line))
+            .map(|timed| timed.event)
+            .collect()
+    }
+
+    fn group(id: &str, message: &str) -> LogEvent {
+        LogEvent::Notification {
+            id: id.into(),
+            kind: "group".into(),
+            sender: String::new(),
+            world_name: None,
+            message: Some(message.into()),
+        }
+    }
+
+    #[test]
+    fn reads_group_notice_on_one_line() {
+        let mut parser = LineParser::default();
+        let events = feed_all(
+            &mut parser,
+            &[group_line("21:00:00", "not_3", "お知らせです\">")],
+        );
+        assert_eq!(events, [group("not_3", "お知らせです")]);
+    }
+
+    #[test]
+    fn collects_a_message_over_several_lines_including_blank_ones() {
+        let mut parser = LineParser::default();
+        // ログの改行は CRLF
+        let lines = [
+            group_line("21:00:00", "not_4", "1 行目\r\n"),
+            "\r\n".to_string(),
+            "3 行目\r\n".to_string(),
+            "4 行目\">\r\n".to_string(),
+            line("[Behaviour] OnLeftRoom"),
+        ];
+        let events = feed_all(&mut parser, &lines);
+        assert_eq!(
+            events,
+            [
+                group("not_4", "1 行目\n\n3 行目\n4 行目"),
+                LogEvent::LeftRoom
+            ]
+        );
+    }
+
+    #[test]
+    fn waits_for_the_rest_of_a_message_between_reads() {
+        let mut parser = LineParser::default();
+        assert!(
+            parser
+                .feed(&group_line("21:00:00", "not_5", "前半"))
+                .is_empty()
+        );
+        assert!(parser.feed("途中").is_empty());
+        let events = parser.feed("後半\">");
+        assert_eq!(events[0].event, group("not_5", "前半\n途中\n後半"));
+    }
+
+    #[test]
+    fn next_record_closes_an_unfinished_message() {
+        let mut parser = LineParser::default();
+        let lines = [
+            group_line("21:00:00", "not_6", "閉じない本文"),
+            line("[Behaviour] OnLeftRoom"),
+        ];
+        assert_eq!(
+            feed_all(&mut parser, &lines),
+            [group("not_6", "閉じない本文"), LogEvent::LeftRoom]
+        );
+    }
+
+    #[test]
+    fn other_lines_pass_through_the_line_parser() {
+        let mut parser = LineParser::default();
+        let lines = [
+            "時刻の無い行".to_string(),
+            line("[Behaviour] OnLeftRoom"),
+            "".to_string(),
+        ];
+        assert_eq!(feed_all(&mut parser, &lines), [LogEvent::LeftRoom]);
     }
 }

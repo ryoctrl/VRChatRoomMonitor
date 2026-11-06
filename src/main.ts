@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import {
+  currentWorldJoins,
   describeInstance,
   describeStatus,
   describeSteamVr,
@@ -10,8 +11,9 @@ import {
   formatDuration,
   formatFeedTime,
   RECENT_MILLISECONDS,
+  SOUND_OPTIONS,
 } from "./format";
-import type { Player, Settings, Snapshot } from "./types";
+import type { Player, Snapshot, SoundSetting, SwitchSetting } from "./types";
 
 function element<T extends HTMLElement>(id: string): T {
   const found = document.getElementById(id);
@@ -27,6 +29,8 @@ const instance = element("instance");
 const count = element("count");
 const playerRows = element<HTMLTableSectionElement>("players");
 const feedRows = element<HTMLTableSectionElement>("feed");
+const feedTitle = element("feed-title");
+const feedEmpty = element("feed-empty");
 const steamVrAutostart = element<HTMLInputElement>("steamvr-autostart");
 const steamVrStatus = element("steamvr-status");
 const steamVrRemove = element<HTMLButtonElement>("steamvr-remove");
@@ -36,6 +40,7 @@ const updateText = element("update-text");
 const updateAction = element<HTMLButtonElement>("update-action");
 const version = element("version");
 const settingInputs = document.querySelectorAll<HTMLInputElement>("input[data-setting]");
+const soundSelects = document.querySelectorAll<HTMLSelectElement>("select[data-sound]");
 
 let current: Snapshot | null = null;
 let updateCommand: string | null = null;
@@ -75,7 +80,11 @@ function renderPlayers(players: Player[], now: number): void {
 }
 
 function renderFeed(snapshot: Snapshot, now: number): void {
-  const rows = snapshot.feed.map((entry) => {
+  const joinsOnly = snapshot.settings.currentWorldJoinsOnly;
+  const entries = joinsOnly ? currentWorldJoins(snapshot) : snapshot.feed;
+  feedTitle.textContent = joinsOnly ? "入室ログ" : "入退室ログ";
+  feedEmpty.hidden = !joinsOnly || entries.length > 0;
+  const rows = entries.map((entry) => {
     const row = document.createElement("tr");
     row.className = entry.kind;
     row.append(
@@ -89,8 +98,14 @@ function renderFeed(snapshot: Snapshot, now: number): void {
 
 function renderOptions(snapshot: Snapshot): void {
   for (const input of settingInputs) {
-    const key = input.dataset.setting as keyof Settings;
+    const key = input.dataset.setting as SwitchSetting;
     input.checked = snapshot.settings[key];
+  }
+  for (const select of soundSelects) {
+    const key = select.dataset.sound as SoundSetting;
+    select.value = snapshot.settings[key];
+    // 退室の音は「退室も通知」がオンのときだけ鳴る
+    select.disabled = key === "soundLeave" && !snapshot.settings.notifyLeave;
   }
   const { steamvr } = snapshot;
   steamVrAutostart.checked = steamvr.autostart;
@@ -144,8 +159,18 @@ function tick(): void {
 
 for (const input of settingInputs) {
   input.addEventListener("change", () => {
-    const key = input.dataset.setting as keyof Settings;
+    const key = input.dataset.setting as SwitchSetting;
     void invoke("update_settings", { patch: { [key]: input.checked } });
+  });
+}
+
+for (const select of soundSelects) {
+  select.append(...SOUND_OPTIONS.map(({ value, label }) => new Option(label, value)));
+  select.addEventListener("change", () => {
+    const key = select.dataset.sound as SoundSetting;
+    void invoke("update_settings", { patch: { [key]: select.value } });
+    // 選んだ音をその場で確かめられるように鳴らす
+    void invoke("preview_sound", { sound: select.value });
   });
 }
 

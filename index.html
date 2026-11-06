@@ -37,7 +37,12 @@
       </section>
 
       <section class="panel feed">
-        <h2>入退室ログ</h2>
+        <div class="panel-head">
+          <h2 id="feed-title">入退室ログ</h2>
+          <label>
+            <input type="checkbox" data-setting="currentWorldJoinsOnly" />現在のワールドの入室のみ
+          </label>
+        </div>
         <div class="scroll">
           <table>
             <thead>
@@ -48,6 +53,7 @@
             </thead>
             <tbody id="feed"></tbody>
           </table>
+          <p id="feed-empty" class="sub empty" hidden>まだ入室はありません</p>
         </div>
       </section>
     </main>
@@ -58,6 +64,11 @@
         <label><input type="checkbox" data-setting="popup" />ポップアップ</label>
         <label><input type="checkbox" data-setting="sound" />通知音</label>
         <label><input type="checkbox" data-setting="notifyLeave" />退室も通知</label>
+      </div>
+      <div class="options sounds">
+        <label>入室の音<select data-sound="soundJoin"></select></label>
+        <label>退室の音<select data-sound="soundLeave"></select></label>
+        <label>招待などの音<select data-sound="soundNotice"></select></label>
       </div>
       <div class="options steamvr">
         <label><input id="steamvr-autostart" type="checkbox" />SteamVR と同時に起動</label>

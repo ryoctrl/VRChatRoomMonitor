@@ -1,5 +1,6 @@
 //! 利用者の設定。ファイルが無い、または壊れている場合は既定値で動く。
 
+use crate::sound::Sound;
 use serde::{Deserialize, Serialize};
 use std::io;
 use std::path::Path;
@@ -17,6 +18,12 @@ pub struct Settings {
     pub steamvr_removed: bool,
     /// 更新を確認する（GitHub に通信する）
     pub check_updates: bool,
+    /// 入退室ログを、現在のワールドの入室だけに絞る（配信に映す場合など）
+    pub current_world_joins_only: bool,
+    pub sound_join: Sound,
+    pub sound_leave: Sound,
+    /// 招待やグループ通知など
+    pub sound_notice: Sound,
 }
 
 impl Default for Settings {
@@ -29,6 +36,10 @@ impl Default for Settings {
             tray_hint_shown: false,
             steamvr_removed: false,
             check_updates: true,
+            current_world_joins_only: false,
+            sound_join: Sound::Chime,
+            sound_leave: Sound::Soft,
+            sound_notice: Sound::Bell,
         }
     }
 }
@@ -91,6 +102,44 @@ mod tests {
         let loaded = Settings::load(&path);
         assert!(!loaded.sound);
         assert!(loaded.popup);
+        // 以前の版の設定ファイルには無い項目は、既定値で始まる
+        assert!(!loaded.current_world_joins_only);
+        assert_eq!(loaded.sound_join, Sound::Chime);
         std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn sounds_use_the_names_the_ui_expects_and_are_saved() {
+        let path = temp_path("sounds");
+        let settings = Settings {
+            sound_join: Sound::Marimba,
+            sound_leave: Sound::Silent,
+            sound_notice: Sound::Windows,
+            ..Settings::default()
+        };
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(json["soundJoin"], "marimba");
+        assert_eq!(json["soundLeave"], "silent");
+        assert_eq!(json["soundNotice"], "windows");
+        settings.save(&path).unwrap();
+        assert_eq!(Settings::load(&path), settings);
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+    }
+
+    #[test]
+    fn join_and_leave_sound_different_by_default() {
+        let settings = Settings::default();
+        assert_ne!(settings.sound_join, settings.sound_leave);
+        assert_ne!(settings.sound_join, settings.sound_notice);
+    }
+
+    #[test]
+    fn current_world_filter_uses_the_name_the_ui_expects() {
+        let settings = Settings {
+            current_world_joins_only: true,
+            ..Settings::default()
+        };
+        let json = serde_json::to_value(settings).unwrap();
+        assert_eq!(json["currentWorldJoinsOnly"], true);
     }
 }

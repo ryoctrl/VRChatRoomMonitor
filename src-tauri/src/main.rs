@@ -52,6 +52,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_snapshot,
             commands::update_settings,
+            commands::preview_sound,
             commands::set_steamvr_autostart,
             commands::remove_steamvr_entry,
             commands::open_licenses,

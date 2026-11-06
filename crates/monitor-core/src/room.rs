@@ -4,6 +4,7 @@ use crate::location::Location;
 use crate::parser::{LogEvent, TimedEvent};
 use chrono::NaiveDateTime;
 use serde::Serialize;
+use std::collections::HashSet;
 
 /// 自分の初期化行が出ないまま、この秒数が過ぎたら以降の入室は「後から来た人」とみなす
 const LOCAL_READY_FALLBACK_SECONDS: i64 = 30;
@@ -67,13 +68,16 @@ pub struct RoomState {
     pub local_name: String,
     local_ready: bool,
     players: Vec<Player>,
+    /// 記録済みの通知の ID
+    seen_notifications: HashSet<String>,
 }
 
 impl RoomState {
-    /// VRChat の再起動（新しいログファイル）に合わせて初期化する。自分の名前だけは引き継ぐ。
+    /// VRChat の再起動（新しいログファイル）に合わせて初期化する。自分の名前と記録済みの通知は引き継ぐ。
     pub fn reset_session(&mut self) {
         *self = Self {
             local_name: std::mem::take(&mut self.local_name),
+            seen_notifications: std::mem::take(&mut self.seen_notifications),
             running: true,
             ..Self::default()
         };
@@ -115,10 +119,24 @@ impl RoomState {
                 vec![]
             }
             LogEvent::Notification {
+                id,
                 kind,
                 sender,
                 world_name,
-            } => vec![notification_item(time, kind, sender, world_name.as_deref())],
+                message,
+            } => {
+                // 未読の通知は同じ ID で何度もログに出るので、最初の 1 回だけ記録する
+                if !id.is_empty() && !self.seen_notifications.insert(id.clone()) {
+                    return vec![];
+                }
+                vec![notification_item(
+                    time,
+                    kind,
+                    sender,
+                    world_name.as_deref(),
+                    message.as_deref(),
+                )]
+            }
             LogEvent::AppQuit => {
                 self.in_room = false;
                 self.players.clear();
@@ -239,6 +257,7 @@ fn notification_item(
     kind: &str,
     sender: &str,
     world_name: Option<&str>,
+    message: Option<&str>,
 ) -> FeedItem {
     let label = match kind {
         "invite" => "招待".to_string(),
@@ -246,11 +265,22 @@ fn notification_item(
         "friendRequest" => "フレンド申請".to_string(),
         "inviteResponse" => "招待への返信".to_string(),
         "requestInviteResponse" => "招待リクエストへの返信".to_string(),
+        "group" => "グループ通知".to_string(),
         other => format!("通知（{other}）"),
     };
-    let text = match world_name {
-        Some(world) => format!("{label}: {sender} → {world}"),
-        None => format!("{label}: {sender}"),
+    let from = match world_name {
+        Some(world) => format!("{sender} → {world}"),
+        None => sender.to_string(),
+    };
+    let detail = [from.as_str(), message.unwrap_or_default()]
+        .into_iter()
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let text = if detail.is_empty() {
+        label
+    } else {
+        format!("{label}: {detail}")
     };
     FeedItem {
         time,
@@ -479,6 +509,78 @@ mod tests {
         assert_eq!(items[2].text, "VRChat が終了しました");
         assert!(!state.running);
         assert!(!state.in_room);
+    }
+
+    fn notification(id: &str, kind: &str, sender: &str, message: Option<&str>) -> TimedEvent {
+        TimedEvent {
+            time: NaiveDateTime::default(),
+            event: LogEvent::Notification {
+                id: id.into(),
+                kind: kind.into(),
+                sender: sender.into(),
+                world_name: None,
+                message: message.map(str::to_string),
+            },
+        }
+    }
+
+    #[test]
+    fn group_notice_shows_its_message() {
+        let mut state = RoomState::default();
+        let items = state.apply(&notification("not_1", "group", "", Some("1 行目\n2 行目")));
+        assert_eq!(items[0].kind, FeedKind::Notice);
+        assert_eq!(items[0].text, "グループ通知: 1 行目\n2 行目");
+        assert!(items[0].notifiable);
+    }
+
+    #[test]
+    fn notification_text_has_no_dangling_separator() {
+        let mut state = RoomState::default();
+        let empty = state.apply(&notification("not_1", "group", "", None));
+        assert_eq!(empty[0].text, "グループ通知");
+        let unknown = state.apply(&notification("not_2", "boop", "Alice", Some("やあ")));
+        assert_eq!(unknown[0].text, "通知（boop）: Alice やあ");
+    }
+
+    #[test]
+    fn repeated_notification_is_recorded_once_even_after_restarting_vrchat() {
+        let mut state = RoomState::default();
+        assert_eq!(
+            state
+                .apply(&notification("not_1", "group", "", Some("本文")))
+                .len(),
+            1
+        );
+        assert!(
+            state
+                .apply(&notification("not_1", "group", "", Some("本文")))
+                .is_empty()
+        );
+        state.reset_session();
+        assert!(
+            state
+                .apply(&notification("not_1", "group", "", Some("本文")))
+                .is_empty()
+        );
+        assert_eq!(
+            state
+                .apply(&notification("not_2", "group", "", Some("別の本文")))
+                .len(),
+            1
+        );
+    }
+
+    #[test]
+    fn notifications_without_an_id_are_not_merged() {
+        let mut state = RoomState::default();
+        for _ in 0..2 {
+            assert_eq!(
+                state
+                    .apply(&notification("", "invite", "Alice", None))
+                    .len(),
+                1
+            );
+        }
     }
 
     #[test]
