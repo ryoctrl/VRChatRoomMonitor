@@ -6,4 +6,5 @@ pub mod monitor;
 pub mod parser;
 pub mod room;
 pub mod settings;
+pub mod sound;
 pub mod watcher;

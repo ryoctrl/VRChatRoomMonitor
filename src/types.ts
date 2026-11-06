@@ -24,13 +24,23 @@ export interface FeedEntry {
   text: string;
 }
 
+export type SoundName = "chime" | "bell" | "marimba" | "pop" | "soft" | "windows" | "silent";
+
 export interface Settings {
   alwaysOnTop: boolean;
   popup: boolean;
   sound: boolean;
   notifyLeave: boolean;
   checkUpdates: boolean;
+  currentWorldJoinsOnly: boolean;
+  soundJoin: SoundName;
+  soundLeave: SoundName;
+  soundNotice: SoundName;
 }
+
+export type SoundSetting = "soundJoin" | "soundLeave" | "soundNotice";
+
+export type SwitchSetting = Exclude<keyof Settings, SoundSetting>;
 
 export interface SteamVrStatus {
   installed: boolean;

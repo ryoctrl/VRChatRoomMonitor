@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
+  currentWorldJoins,
   describeInstance,
   describeStatus,
   describeSteamVr,
   describeUpdate,
   formatDuration,
   formatFeedTime,
+  SOUND_OPTIONS,
 } from "./format";
+import type { FeedEntry, FeedKind } from "./types";
 
 const at = (hour: number, minute: number, second = 0, day = 5): number =>
   new Date(2026, 10, day, hour, minute, second).getTime();
@@ -29,6 +32,52 @@ describe("formatFeedTime", () => {
 
   it("shows the date for earlier days", () => {
     expect(formatFeedTime(at(21, 5, 9, 4), at(1, 0))).toBe("11/04 21:05");
+  });
+});
+
+describe("currentWorldJoins", () => {
+  const entry = (kind: FeedKind, text: string): FeedEntry => ({ time: 0, kind, text });
+  const feed = [
+    entry("leave", "Carol が退室"),
+    entry("notice", "招待: Alice → 別のワールド"),
+    entry("join", "Dave が入室"),
+    entry("join", "Carol が入室"),
+    entry("info", "入室完了（先客 1 人）"),
+    entry("room", "今のワールド"),
+    entry("join", "Bob が入室"),
+    entry("room", "前のワールド"),
+  ];
+  const texts = (entries: FeedEntry[]): string[] => entries.map((item) => item.text);
+
+  it("keeps only the joins since entering the current room", () => {
+    expect(texts(currentWorldJoins({ worldName: "今のワールド", feed }))).toEqual([
+      "Dave が入室",
+      "Carol が入室",
+    ]);
+  });
+
+  it("shows nothing outside a room, even right after leaving one", () => {
+    expect(currentWorldJoins({ worldName: null, feed })).toEqual([]);
+  });
+
+  it("is empty right after entering a room", () => {
+    const entered = [entry("room", "新しいワールド"), ...feed];
+    expect(currentWorldJoins({ worldName: "新しいワールド", feed: entered })).toEqual([]);
+  });
+
+  it("keeps every join when the room line has dropped out of the limit", () => {
+    const joins = [entry("join", "Dave が入室"), entry("leave", "Carol が退室")];
+    expect(texts(currentWorldJoins({ worldName: "今のワールド", feed: joins }))).toEqual([
+      "Dave が入室",
+    ]);
+  });
+});
+
+describe("SOUND_OPTIONS", () => {
+  it("offers every sound once", () => {
+    const values = SOUND_OPTIONS.map((option) => option.value);
+    expect(values).toEqual(["chime", "bell", "marimba", "pop", "soft", "windows", "silent"]);
+    expect(new Set(SOUND_OPTIONS.map((option) => option.label)).size).toBe(values.length);
   });
 });
 

@@ -3,7 +3,7 @@
 //! Windows では、書き込み中のファイルの更新通知は遅れることがあるため、
 //! ファイル変更の通知には頼らず、短い間隔で続きを読む。
 
-use crate::parser::{TimedEvent, parse_line};
+use crate::parser::{LineParser, TimedEvent};
 use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
@@ -93,6 +93,7 @@ struct OpenLog {
     position: u64,
     /// 行の途中まで読んだ分
     pending: Vec<u8>,
+    parser: LineParser,
 }
 
 struct Watcher<F> {
@@ -145,6 +146,7 @@ impl<F: FnMut(WatchMessage)> Watcher<F> {
             file,
             position: 0,
             pending: Vec::new(),
+            parser: LineParser::default(),
         });
         if replay {
             self.drain(true);
@@ -170,6 +172,7 @@ impl<F: FnMut(WatchMessage)> Watcher<F> {
             log.file.seek(SeekFrom::Start(0))?;
             log.position = 0;
             log.pending.clear();
+            log.parser = LineParser::default();
         }
         let mut chunk = vec![0; READ_CHUNK];
         loop {
@@ -179,7 +182,7 @@ impl<F: FnMut(WatchMessage)> Watcher<F> {
             }
             log.position += read as u64;
             log.pending.extend_from_slice(&chunk[..read]);
-            let events = take_events(&mut log.pending);
+            let events = take_events(&mut log.pending, &mut log.parser);
             if !events.is_empty() {
                 (self.on_message)(WatchMessage::Events { events, replay });
             }
@@ -194,13 +197,13 @@ impl<F: FnMut(WatchMessage)> Watcher<F> {
 }
 
 /// 改行まで届いた行だけを解析し、続きが来ていない行は残しておく。
-fn take_events(pending: &mut Vec<u8>) -> Vec<TimedEvent> {
+fn take_events(pending: &mut Vec<u8>, parser: &mut LineParser) -> Vec<TimedEvent> {
     let Some(end) = pending.iter().rposition(|&byte| byte == b'\n') else {
         return Vec::new();
     };
     let events = pending[..end]
         .split(|&byte| byte == b'\n')
-        .filter_map(|line| parse_line(&String::from_utf8_lossy(line)))
+        .flat_map(|line| parser.feed(&String::from_utf8_lossy(line)))
         .collect();
     pending.drain(..=end);
     events
@@ -316,6 +319,33 @@ mod tests {
         assert!(matches!(
             next(&receiver),
             WatchMessage::Events { replay: false, .. }
+        ));
+    }
+
+    #[test]
+    fn message_written_over_several_reads_becomes_one_event() {
+        let dir = TempDir::new("multiline");
+        dir.append(FIRST, "");
+        let (_handle, receiver) = start(&dir);
+        assert!(matches!(next(&receiver), WatchMessage::File { .. }));
+        assert_eq!(next(&receiver), WatchMessage::ReplayDone);
+
+        let head = line(
+            "21:00:00",
+            "Received Notification: <Notification from username:, sender user id: to usr_2 of \
+             type: group, id: not_1, created at: x, details: {{}}, type:group, m seen:False, \
+             message: \"1 行目",
+        );
+        dir.append(FIRST, &format!("{head}\r\n"));
+        assert!(receiver.recv_timeout(Duration::from_millis(150)).is_err());
+        dir.append(FIRST, "2 行目\">\r\n");
+        let WatchMessage::Events { events, .. } = next(&receiver) else {
+            panic!("expected events");
+        };
+        assert_eq!(events.len(), 1);
+        assert!(matches!(
+            &events[0].event,
+            LogEvent::Notification { message: Some(text), .. } if text == "1 行目\n2 行目"
         ));
     }
 

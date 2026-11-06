@@ -5,13 +5,16 @@
 
 use crate::state::AppState;
 use crate::window;
-use monitor_core::monitor::wants_alert;
+use monitor_core::monitor::{alert_sound, wants_alert};
 use monitor_core::room::{FeedItem, FeedKind};
+use monitor_core::sound::Sound;
 use serde::Serialize;
 use std::thread;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Theme, UserAttentionType, WebviewUrl, WebviewWindowBuilder};
-use windows_sys::Win32::Media::Audio::{PlaySoundW, SND_ALIAS, SND_ASYNC, SND_NODEFAULT};
+use windows_sys::Win32::Media::Audio::{
+    PlaySoundW, SND_ALIAS, SND_ASYNC, SND_MEMORY, SND_NODEFAULT,
+};
 
 const POPUP_DURATION: Duration = Duration::from_secs(7);
 const POPUP_WIDTH: f64 = 320.0;
@@ -46,8 +49,10 @@ pub fn alert(app: &AppHandle, items: &[FeedItem]) {
             show_popup(app, &message(item, &world));
         }
     }
-    if settings.sound {
-        play_sound();
+    if settings.sound
+        && let Some(sound) = alert_sound(&wanted, &settings)
+    {
+        play_sound(sound);
     }
     if let Some(main) = app.get_webview_window(window::MAIN)
         && !main.is_focused().unwrap_or(false)
@@ -171,15 +176,27 @@ fn popup_position(app: &AppHandle, slot: usize) -> Option<(f64, f64)> {
     ))
 }
 
-fn play_sound() {
-    let alias: Vec<u16> = "Notification.Default\0".encode_utf16().collect();
-    // SAFETY: alias は NUL 終端の UTF-16 文字列。エイリアス指定ではモジュールハンドルは不要。
-    // 音を鳴らせない環境では失敗するだけで、他の通知には影響しない。
-    unsafe {
-        PlaySoundW(
-            alias.as_ptr(),
-            std::ptr::null_mut(),
-            SND_ALIAS | SND_ASYNC | SND_NODEFAULT,
-        );
+/// 音を鳴らす。音を鳴らせない環境では失敗するだけで、他の通知には影響しない。
+pub fn play_sound(sound: Sound) {
+    if let Some(wav) = sound.wav() {
+        // SAFETY: SND_MEMORY ではポインタを WAV データの先頭として扱う。データは終了まで保持され、
+        // 非同期の再生中も有効。モジュールハンドルは不要。
+        unsafe {
+            PlaySoundW(
+                wav.as_ptr().cast(),
+                std::ptr::null_mut(),
+                SND_MEMORY | SND_ASYNC | SND_NODEFAULT,
+            );
+        }
+    } else if sound == Sound::Windows {
+        let alias: Vec<u16> = "Notification.Default\0".encode_utf16().collect();
+        // SAFETY: alias は NUL 終端の UTF-16 文字列。エイリアス指定ではモジュールハンドルは不要。
+        unsafe {
+            PlaySoundW(
+                alias.as_ptr(),
+                std::ptr::null_mut(),
+                SND_ALIAS | SND_ASYNC | SND_NODEFAULT,
+            );
+        }
     }
 }

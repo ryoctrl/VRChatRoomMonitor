@@ -2,6 +2,8 @@
 
 use crate::location::Location;
 use crate::room::{FeedItem, FeedKind, RoomState};
+use crate::settings::Settings;
+use crate::sound::Sound;
 use crate::watcher::WatchMessage;
 use chrono::{Local, NaiveDateTime, TimeZone};
 use serde::Serialize;
@@ -178,6 +180,18 @@ pub fn wants_alert(item: &FeedItem, notify_leave: bool) -> bool {
     }
 }
 
+/// 同時に鳴らせる音は 1 つなので、入室、招待などの通知、退室の順に優先する。無音に設定した種類は飛ばす。
+pub fn alert_sound(items: &[&FeedItem], settings: &Settings) -> Option<Sound> {
+    [
+        (FeedKind::Join, settings.sound_join),
+        (FeedKind::Notice, settings.sound_notice),
+        (FeedKind::Leave, settings.sound_leave),
+    ]
+    .into_iter()
+    .find(|&(kind, sound)| sound != Sound::Silent && items.iter().any(|item| item.kind == kind))
+    .map(|(_, sound)| sound)
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RoomView {
@@ -257,6 +271,60 @@ mod tests {
         let alerts = monitor.handle(events(&[BOB_LEFT], false));
         assert!(wants_alert(&alerts[0], true));
         assert!(!wants_alert(&alerts[0], false));
+    }
+
+    fn item(kind: FeedKind) -> FeedItem {
+        FeedItem {
+            time: NaiveDateTime::default(),
+            kind,
+            text: String::new(),
+            name: String::new(),
+            notifiable: true,
+        }
+    }
+
+    #[test]
+    fn each_kind_uses_its_own_sound() {
+        let settings = Settings::default();
+        for (kind, sound) in [
+            (FeedKind::Join, settings.sound_join),
+            (FeedKind::Leave, settings.sound_leave),
+            (FeedKind::Notice, settings.sound_notice),
+        ] {
+            assert_eq!(alert_sound(&[&item(kind)], &settings), Some(sound));
+        }
+    }
+
+    #[test]
+    fn join_sound_wins_when_several_kinds_arrive_together() {
+        let settings = Settings::default();
+        let (leave, join, notice) = (
+            item(FeedKind::Leave),
+            item(FeedKind::Join),
+            item(FeedKind::Notice),
+        );
+        assert_eq!(
+            alert_sound(&[&leave, &notice, &join], &settings),
+            Some(settings.sound_join)
+        );
+        assert_eq!(
+            alert_sound(&[&leave, &notice], &settings),
+            Some(settings.sound_notice)
+        );
+    }
+
+    #[test]
+    fn silent_kinds_are_skipped() {
+        let settings = Settings {
+            sound_join: Sound::Silent,
+            ..Settings::default()
+        };
+        let (join, leave) = (item(FeedKind::Join), item(FeedKind::Leave));
+        assert_eq!(alert_sound(&[&join], &settings), None);
+        assert_eq!(
+            alert_sound(&[&join, &leave], &settings),
+            Some(settings.sound_leave)
+        );
     }
 
     #[test]
