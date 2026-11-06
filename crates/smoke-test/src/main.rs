@@ -3,7 +3,7 @@
 //! 実行: `cargo run -p smoke-test -- <exe のパス>`
 //!
 //! 同梱ライブラリの読み込み、ログの表示、後から来た人の反映とポップアップ、閉じてもトレイで
-//! 動き続けること、二重起動の防止、再表示、終了を確かめる。ログと設定は一時フォルダを使い、SteamVR にも接続しない。
+//! 動き続けること、二重起動の防止、再表示、終了、題名の固定を確かめる。ログと設定は一時フォルダを使い、SteamVR にも接続しない。
 //! 実際のアプリの通知と紛らわしいので、通知音はオフにして実行する。
 
 use chrono::Local;
@@ -79,6 +79,13 @@ fn window_with_title(exe: &Path, part: &str) -> Option<HWND> {
     app_windows(exe)
         .into_iter()
         .find(|(_, title)| title.contains(part))
+        .map(|(window, _)| window)
+}
+
+fn window_with_exact_title(exe: &Path, expected: &str) -> Option<HWND> {
+    app_windows(exe)
+        .into_iter()
+        .find(|(_, title)| title == expected)
         .map(|(window, _)| window)
 }
 
@@ -245,6 +252,41 @@ fn run(exe: &Path, root: &Path) {
         "settings not saved: {saved}"
     );
     println!("ok: settings are loaded and saved, with the sound off");
+
+    // 題名を固定する設定では、ログを読んで人が増えても題名がアプリ名のまま変わらない
+    fs::write(
+        &settings,
+        r#"{"sound": false, "popup": false, "fixedTitle": true}"#,
+    )
+    .unwrap();
+    let mut fixed = app.command().spawn().unwrap();
+    wait_until("window opens with the fixed title", || {
+        window_with_exact_title(exe, APP_NAME)
+    });
+    append(
+        &log,
+        &log_line(&format!("[Behaviour] OnPlayerJoined Carol ({USER}4)")),
+    );
+    std::thread::sleep(Duration::from_secs(3));
+    assert!(
+        window_with_exact_title(exe, APP_NAME).is_some() && window_with_title(exe, WORLD).is_none(),
+        "title must stay fixed: {:?}",
+        app_windows(exe)
+            .into_iter()
+            .map(|(_, title)| title)
+            .collect::<Vec<_>>()
+    );
+    println!("ok: fixed title does not follow the room");
+    assert_eq!(
+        app.run_to_end(&["--quit"]),
+        0,
+        "--quit with the fixed title"
+    );
+    assert_eq!(
+        wait_for_exit(&mut fixed),
+        0,
+        "fixed title instance exit code"
+    );
 }
 
 fn main() {

@@ -1,4 +1,4 @@
-* text=auto
+* text=auto eol=lf
 *.dll binary
 *.ico binary
 *.png binary

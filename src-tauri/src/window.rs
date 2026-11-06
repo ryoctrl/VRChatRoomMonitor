@@ -22,7 +22,7 @@ pub fn create_main(app: &AppHandle) -> tauri::Result<()> {
     let (title, always_on_top) = {
         let state = app.state::<AppState>();
         let inner = state.lock();
-        (inner.title(), inner.settings.always_on_top)
+        (inner.window_title(), inner.settings.always_on_top)
     };
     WebviewWindowBuilder::new(app, MAIN, WebviewUrl::default())
         .title(title)
