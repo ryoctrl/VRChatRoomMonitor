@@ -44,11 +44,16 @@ export function formatClock(time: number): string {
   return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+/** 時:分:秒。画面の時計にも使う。 */
+export function formatTimeOfDay(time: number): string {
+  return `${formatClock(time)}:${pad(new Date(time).getSeconds())}`;
+}
+
 /** 今日の記録は秒まで、それ以前の記録は日付つきで表示する。 */
 export function formatFeedTime(time: number, now: number): string {
   const date = new Date(time);
   if (date.toDateString() === new Date(now).toDateString()) {
-    return `${formatClock(time)}:${pad(date.getSeconds())}`;
+    return formatTimeOfDay(time);
   }
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())} ${formatClock(time)}`;
 }
