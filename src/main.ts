@@ -10,6 +10,7 @@ import {
   formatClock,
   formatDuration,
   formatFeedTime,
+  formatTimeOfDay,
   RECENT_MILLISECONDS,
   SOUND_OPTIONS,
 } from "./format";
@@ -24,6 +25,7 @@ function element<T extends HTMLElement>(id: string): T {
 }
 
 const statusLine = element("status");
+const clock = element("clock");
 const world = element("world");
 const instance = element("instance");
 const count = element("count");
@@ -126,9 +128,14 @@ function renderInstance(snapshot: Snapshot, now: number): void {
   instance.textContent = describeInstance(snapshot.location, snapshot.enteredAt, now);
 }
 
+function renderClock(now: number): void {
+  clock.textContent = formatTimeOfDay(now);
+}
+
 function render(snapshot: Snapshot): void {
   current = snapshot;
   const now = Date.now();
+  renderClock(now);
   const status = describeStatus(snapshot);
   statusLine.textContent = status.text;
   statusLine.className = `status ${status.className}`;
@@ -142,12 +149,13 @@ function render(snapshot: Snapshot): void {
   renderUpdate(snapshot);
 }
 
-/** 経過時間だけを更新する。ウィンドウが隠れている間は何もしない。 */
+/** 時計と経過時間だけを更新する。ウィンドウが隠れている間は何もしない。 */
 function tick(): void {
   if (document.hidden || !current) {
     return;
   }
   const now = Date.now();
+  renderClock(now);
   renderInstance(current, now);
   for (const { cell: elapsed, row, player } of elapsedCells) {
     elapsed.textContent = formatDuration(now - player.joinedAt);
@@ -212,6 +220,22 @@ licenses.addEventListener("click", () => {
   void invoke("open_licenses");
 });
 
+/**
+ * 時計の秒が PC の時計とずれないよう、毎秒の切り替わりの直後に更新する。
+ * タイマーがわずかに早く動いても前の秒を表示しないよう、少し遅らせる。
+ */
+function scheduleTick(): void {
+  setTimeout(
+    () => {
+      tick();
+      scheduleTick();
+    },
+    1000 - (Date.now() % 1000) + 20,
+  );
+}
+
 await listen<Snapshot>("snapshot", (event) => render(event.payload));
 render(await invoke<Snapshot>("get_snapshot"));
-setInterval(tick, 1000);
+// 隠れている間は更新を止めているので、表示されたらすぐに時計を合わせる
+document.addEventListener("visibilitychange", tick);
+scheduleTick();

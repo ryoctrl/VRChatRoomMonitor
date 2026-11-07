@@ -1,6 +1,6 @@
 [package]
 name = "vrchat-room-monitor"
-version = "0.2.2"
+version = "0.2.3"
 description = "VRChat のログを監視して、現在のルームの状況と入退室の記録をデスクトップに表示する"
 authors = ["RYOCTRL"]
 edition.workspace = true

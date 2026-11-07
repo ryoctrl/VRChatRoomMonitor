@@ -7,6 +7,7 @@ import {
   describeUpdate,
   formatDuration,
   formatFeedTime,
+  formatTimeOfDay,
   SOUND_OPTIONS,
 } from "./format";
 import type { FeedEntry, FeedKind } from "./types";
@@ -22,6 +23,13 @@ describe("formatDuration", () => {
 
   it("treats a future time as zero", () => {
     expect(formatDuration(-5_000)).toBe("0:00");
+  });
+});
+
+describe("formatTimeOfDay", () => {
+  it("shows hours, minutes and seconds with leading zeros", () => {
+    expect(formatTimeOfDay(at(9, 5, 7))).toBe("09:05:07");
+    expect(formatTimeOfDay(at(23, 59, 59))).toBe("23:59:59");
   });
 });
 
